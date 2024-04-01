@@ -9,6 +9,7 @@ min_val = float('-inf')
 dir_dict = {(-1,-1): 1, (0,-1): 2, (1,-1): 3, (-1,0): 4, (1,0): 6, (-1,1): 7, (0,1): 8, (1,1): 9}
 boundary = 12
 Debug = False
+is_check = -2
 
 def output_map(mapStat, sheepStat):
     for i in range(12):
@@ -120,6 +121,22 @@ def minmax(mapStat, sheepStat, iter_num, playerID, alpha, beta, index):
         # print("min")
         return min_part( mapStat, sheepStat, iter_num, playerID, alpha, beta, index)   
     
+def calculate_connect_region(check_map, x, y, id):
+    if x < 0 or x > 11 or y < 0 or y > 11 or check_map[x][y] != id:
+        return 0
+    check_map[x][y] = is_check
+    return 1 + calculate_connect_region(check_map, x - 1, y, id) + calculate_connect_region(check_map, x + 1, y, id) + calculate_connect_region(check_map, x, y - 1, id) + calculate_connect_region(check_map, x, y + 1, id)
+
+def update_check_map(check_map, x, y, id):
+    if x < 0 or x > 11 or y < 0 or y > 11 or check_map[x][y] != id:
+        return check_map
+    check_map[x][y] = is_check
+    update_check_map(check_map, x - 1, y, id)
+    update_check_map(check_map, x + 1, y, id)
+    update_check_map(check_map, x, y - 1, id)
+    update_check_map(check_map, x, y + 1, id)
+    return check_map
+    
         
 def evaluate(id, mapStat, sheepStat, is_oppoent = False, is_end = False):
     # id: 以哪個玩家的角度來評估
@@ -127,27 +144,28 @@ def evaluate(id, mapStat, sheepStat, is_oppoent = False, is_end = False):
     # sheepStat: 羊群狀態
     # is_oppoent: 是否為對手, 若為對手, 則回傳負的評估值
     # is_end: 是否為結束狀態, 若為結束狀態, 則回傳結束狀態的評估值
-    tmp = dict()
+    
     scores = 0
-    base_ratio = 1.25
+    region_ratio = 1.25
     possible_step_ratio = 2
+    check_map = np.array(mapStat).astype(int)
     for i in range(12):
         for j in range(12):
             if mapStat[i][j] != id:
                 continue
-            if sheepStat[i][j] not in tmp:
-                tmp[sheepStat[i][j]] = 1
             else:
-                tmp[sheepStat[i][j]] += 1
+                if check_map[i][j] != id:
+                    continue
+                region_score = calculate_connect_region(check_map, i, j, id)
+                check_map = update_check_map(check_map, i, j, id)
+                scores += region_score ** region_ratio
             if sheepStat[i][j] > 1:
-                scores += evaulate_with_possible_move_nums(mapStat, i, j)  * sheepStat[i][j]         
+                scores += evaulate_with_possible_move_nums(mapStat, i, j)  * sheepStat[i][j] * possible_step_ratio    
             if (not is_end) and sheepStat[i][j] > 4:
-                scores += (evaluate_with_future_possibility(mapStat, i, j, sheepStat[i][j]) * possible_step_ratio)
-                pass
-               
+                scores += (evaluate_with_future_possibility(mapStat, i, j, sheepStat[i][j]))
                 
-    for key in tmp:
-        scores += tmp[key] ** base_ratio
+               
+
     return scores if not is_oppoent else -scores
 
 

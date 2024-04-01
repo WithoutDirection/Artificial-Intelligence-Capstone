@@ -1,7 +1,7 @@
 1
-./sample/Sample_1.exe
-2
 ./sample/110550101.exe
+2
+./sample/minmax_ver_0.exe
 3
 ./sample/Sample_3.exe
 4
