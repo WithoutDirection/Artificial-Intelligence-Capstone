@@ -8,7 +8,7 @@ CXXFLAGS = -Wall -g
 TARGET = minmax_ver_3.exe
 
 # 指定來源檔案
-SOURCES = Sample.cpp STcpClient.h
+SOURCES = Sample.cpp
 
 # 指定目標規則
 all: $(TARGET)

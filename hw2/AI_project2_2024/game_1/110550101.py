@@ -37,8 +37,8 @@ def get_legal_action(mapStat, sheepStat, playerID):
                     if i + dir[0] < 0 or i + dir[0] > 11 or j + dir[1] < 0 or j + dir[1] > 11 or mapStat[i+dir[0]][j+dir[1]] != 0:
                         continue
                     
-                    actions.append([(i,j), 1, dir_dict[dir]])
-                    actions.append([(i,j), sheepStat[i][j] - 1, dir_dict[dir]])
+                    # actions.append([(i,j), 1, dir_dict[dir]])
+                    # actions.append([(i,j), sheepStat[i][j] - 1, dir_dict[dir]])
                     actions.append([(i,j), sheepStat[i][j] // 2, dir_dict[dir]])
                     
                     
@@ -262,7 +262,7 @@ def GetStep(playerID, mapStat, sheepStat):
     mapStat = np.array(mapStat).astype(int)
     sheepStat = np.array(sheepStat).astype(int)
     # output_map(mapStat, sheepStat)
-    _, action = minmax(mapStat, sheepStat, 3, playerID, min_val, max_val, playerID)
+    _, action = minmax(mapStat, sheepStat, 4, playerID, min_val, max_val, playerID)
     if Debug:
         if action is None:
             # assert error

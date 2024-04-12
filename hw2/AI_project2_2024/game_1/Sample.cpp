@@ -26,6 +26,9 @@ map<int, pair<int, int>> dir_map = {
 bool Debug = false;
 bool show_scores = false;
 bool show_step = false;
+bool show_map = false;
+bool show_dir = false;
+int step_num = 1;
 void print_state(State &s){
 	vector<vector<int>> mapStat = s.first;
 	vector<vector<int>> sheepStat = s.second;
@@ -36,30 +39,33 @@ void print_state(State &s){
 		}
 		cout << endl;
 	}
-	cout << "sheepStat: " << endl;
-	for(int i = 0; i < boundary; i++){
-		for(int j = 0; j < boundary; j++){
-			cout << sheepStat[i][j] << " ";
-		}
-		cout << endl;
-	}
+	// cout << "sheepStat: " << endl;
+	// for(int i = 0; i < boundary; i++){
+	// 	for(int j = 0; j < boundary; j++){
+	// 		cout << sheepStat[i][j] << " ";
+	// 	}
+	// 	cout << endl;
+	// }
 }
-
+bool isnt_bound(int x, int y){
+	return x >= 0 && x < boundary && y >= 0 && y < boundary;
+}
 vector<Action> get_action(vector<vector<int>> &mapStat, vector<vector<int>> &sheepStat, int playerID){
 	vector<Action> actions;
 	for(int i = 0; i < boundary; i++){
 		for(int j = 0; j < boundary; j++){
-			if (mapStat[i][j] == playerID && sheepStat[i][j] >1){
+			if(mapStat[i][j] != playerID) continue;
+			else if (sheepStat[i][j] >1){
 				for(auto &dir: dir_map){
 					int dlt_x = dir.second.first;
 					int dlt_y = dir.second.second;
-					if(i + dlt_x < 0 || i + dlt_x > boundary - 1 || j + dlt_y < 0 || j + dlt_y > boundary - 1 || mapStat[i + dlt_x][j + dlt_y] != 0) continue;
+					if(!isnt_bound(i + dlt_x, j + dlt_y) || mapStat[i + dlt_x][j + dlt_y] != 0) continue; // 不能移動
 					// for(int k = 1; k < sheepStat[i][j]; k++){
 					// 	Action new_action = {i, j, k, dir.first};
 					// 	actions.push_back(new_action);
 					// }
 					actions.push_back({i, j, sheepStat[i][j] / 2, dir.first});
-					actions.push_back({i, j, sheepStat[i][j] - 1, dir.first});
+					// actions.push_back({i, j, sheepStat[i][j] - 1, dir.first});
 					// actions.push_back({i, j, 1, dir.first});
 				}
 			}
@@ -87,7 +93,7 @@ State get_next_state(State &state, Action &action){
 	sheepStat[x][y] -= m;
 	int dlt_x = dir_map[dir].first;
 	int dlt_y = dir_map[dir].second;
-	while(x + dlt_x >= 0 && x + dlt_x <= boundary - 1 && y + dlt_y >= 0 && y + dlt_y <= boundary - 1 && mapStat[x + dlt_x][y + dlt_y] == 0){
+	while(isnt_bound(x + dlt_x, y + dlt_y) && mapStat[x + dlt_x][y + dlt_y] == 0){
 		x += dlt_x;
 		y += dlt_y;
 	}
@@ -108,73 +114,65 @@ int cal_connected_region(vector<vector<int>> &mapState, vector<vector<bool>> &vi
 }
 
 int cal_available_step(vector<vector<int>> &mapStat, vector<vector<int>> &sheepStat , int x, int y, int sheep_num){
-	if(sheep_num <= 1) return 1; // 沒有羊可以切
+	if(sheep_num <= 1) return 2; // 沒有羊可以切
 	int cnt = 0;
+	int save_place = 0;
 	for(auto& dir : dir_map){
 		int dlt_x = dir.second.first;
 		int dlt_y = dir.second.second;
-		// 到達邊界或是遇到障礙物
-		while(x + dlt_x >= 0 && x + dlt_x <= boundary - 1 && y + dlt_y >= 0 && y + dlt_y <= boundary - 1 && mapStat[x + dlt_x][y + dlt_y] == 0){
-			x += dlt_x;
-			y += dlt_y;
+		int tmp_x = x;
+		int tmp_y = y;
+		if(!isnt_bound(tmp_x + dlt_x, tmp_y + dlt_y) || mapStat[tmp_x + dlt_x][tmp_y + dlt_y] != 0) continue; // 無法移動
+		// 檢查是否可以移動
+		while( isnt_bound(tmp_x + dlt_x, tmp_y + dlt_y) && mapStat[tmp_x + dlt_x][tmp_y + dlt_y] == 0){
+			tmp_x += dlt_x;
+			tmp_y += dlt_y;
+		}		
+		if(!isnt_bound(tmp_x + dlt_x, tmp_y + dlt_y) || mapStat[tmp_x + dlt_x][tmp_y + dlt_y] == -1 || mapStat[tmp_x + dlt_x][tmp_y + dlt_y] == mapStat[x][y]|| sheepStat[tmp_x + dlt_x][tmp_y + dlt_y] <= 1){
+			save_place += 1; // 不是牆壁或是自己的地盤或是敵人羊群數量不足 = 安全的地方
 		}
-		// 如果是敵人的旗子且羊的數量大於1
-		if(mapStat[x][y] != -1 && sheepStat[x + dlt_x][y + dlt_y] > 1){
-			cnt += 1;
-		}
-		else{
-			cnt+= 4; //不會被攻擊到的方向
-		}
-		
+		cnt += 1; // 可以移動的方向
 	}
-	if(cnt == 0) return -5; // 扣分: 沒有可走的方向
-	return cnt;
+	if(show_dir) cout << "for (" << x << " " << y << ") available place: " << cnt << " save_place: " << save_place << endl;
+	if(cnt == 0) return -50; // 扣分: 沒有可走的方向
+	else if(cnt < sheep_num && save_place < cnt / 2) return -10; // 扣分: 可走的方向不足且容易被封死
+	else if(cnt < sheep_num && save_place >= cnt / 2) return -5; // 加分: 可走的方向不足但不容易被封死
+	else if(save_place <= cnt / 2) return 7; // 加分: 可走的方向足夠但容易被封死
+	else if(save_place > cnt / 2) return 10; // 加分: 可走的方向足夠且不容易被封死
+	else return 0; // 不加分也不扣分(不會發生
 }
 
-double eva_with_future_possibility(vector<vector<int>> &mapStat, int x, int y, int sheep_num);
 
-double evaluate(int playerID, State state, bool is_oppoent = false){
-	double score = 0;
+double evaluate(int playerID, State state, bool is_oppoent = false, bool region_flag = false){
+	// randomly setthe init score between 10 and -10
+	double score = rand() % 10 - 5 ;
 	vector<vector<int>> mapStat = state.first;
 	vector<vector<int>> sheepStat = state.second;
 	vector<vector<bool>> visited(boundary, vector<bool>(boundary, false));
+	map<int, int> region_cnt;
 	float region_ratio = 1.25;
-	float available_step_ratio = 0.6;
-	float future_possibility_ratio = 0.8;
-	int total_num = 0;
+	// float available_step_ratio = 0.95;
+	float sepreate_ratio = 1.75;
 	// calculate the score of the map
 	for(int i = 0; i < boundary; i++){
 		for(int j = 0; j < boundary; j++){
 			if(mapStat[i][j] == playerID ){
-				score += cal_available_step(mapStat, sheepStat, i, j, sheepStat[i][j]) * sheepStat[i][j] * available_step_ratio;
-				if(sheepStat[i][j] > 8) score += eva_with_future_possibility(mapStat, i, j, sheepStat[i][j]) * future_possibility_ratio;
-				total_num++;
+				// score += (cal_available_step(mapStat, sheepStat, i, j, sheepStat[i][j]) * sheepStat[i][j] * available_step_ratio);
+				if(region_flag) score += pow(cal_connected_region(mapStat, visited, i, j, playerID),region_ratio);
+				if(region_cnt.find(sheepStat[i][j]) == region_cnt.end()) region_cnt[sheepStat[i][j]] = 1;
+				else region_cnt[sheepStat[i][j]] += 1;
 			}
 		}
 	}
-	if(total_num >= 8){
-		for(int i = 0; i < boundary; i++){
-			for(int j = 0; j < boundary; j++){
-				if(mapStat[i][j] == playerID){
-					score += pow(cal_connected_region(mapStat, visited, i, j, playerID),region_ratio);
-				}
-			}
-		}
+	for(auto& region: region_cnt){
+		score += pow(region.second, sepreate_ratio);
 	}
 	
-	if (is_oppoent) score = -score;
+	if (is_oppoent) score = -1 * score;
 	return score;
 }
 
-void copy_mapState(int src[boundary][boundary], int dst[boundary][boundary]){
-	for (int i = 0; i < boundary; i++){
-		for (int j = 0; j < boundary; j++){
-			dst[i][j] = src[i][j];
-		}
-	}
-}
-
-double eva_with_future_possibility(vector<vector<int>> &mapStat, int x, int y, int sheep_num = 8){
+double eva_with_future_possibility(vector<vector<int>> mapStat, int x, int y, int sheep_num = 8){
 	if (sheep_num <= 1) return 1;
 	int score = 0;
 	mapStat[x][y] = 5; // 5 代表這裡有羊
@@ -198,91 +196,79 @@ double eva_with_future_possibility(vector<vector<int>> &mapStat, int x, int y, i
 	return score;
 
 }
-Node minmax(State state, int iter_num, int playerID, double alpha, double beta, int index);
-Node min_part(State state, int iter_num, int playerID, double alpha, double beta, int index){
-	if(Debug) cout << "Enter Min Part, parameter: " << iter_num << " " << playerID << " " << alpha << " " << beta << " " << index << endl;
-	double val = INT_MAX;
-	Action best_action = Action();
-	vector<vector<int>> mapStat = state.first;
-	vector<vector<int>> sheepStat = state.second;
-	vector<Action> actions = get_action(mapStat, sheepStat, index);
-	if(Debug){
-		for(auto &action: actions){
-			cout << action[0] << " " << action[1] << " " << action[2] << " " << action[3] << endl;
-		}
-	}
-	for(auto &action: actions){
-		State next_state = get_next_state(state, action);
-		Node tmp_node = minmax(next_state, iter_num - 1, playerID, alpha, beta, index + 1);
-		if(tmp_node.first < val){
-			val = tmp_node.first;
-			best_action = action;
-		}
-		if(val <= alpha){
-			return make_pair(val, best_action);
-		}
-		beta = min(beta, val);
-	}
-	return make_pair(val, best_action);
-}
 
-Node max_part(State state, int iter_num, int playerID, double alpha, double beta, int index){
-	if(Debug) cout << "Enter Max Part, parameter: " << iter_num << " " << playerID << " " << alpha << " " << beta << " " << index << endl;
-	double val = -INT_MAX;
-	Action best_action = Action();
-	vector<vector<int>> mapStat = state.first;
-	vector<vector<int>> sheepStat = state.second;
-	vector<Action> actions = get_action(mapStat, sheepStat, index);
-	if(Debug){
-		for(auto &action: actions){
-			cout << action[0] << " " << action[1] << " " << action[2] << " " << action[3] << endl;
-		}
-	}
-	for(auto &action: actions){
-		State next_state = get_next_state(state, action);
-		if (Debug){
-			cout << "Next mapStat: " << endl;
-			for(int i = 0; i < boundary; i++){
-				for(int j = 0; j < boundary; j++){
-					cout << next_state.first[i][j] << " ";
-				}
-				cout << endl;
-			}
-			cout << "Next sheepStat: " << endl;
-			for(int i = 0; i < boundary; i++){
-				for(int j = 0; j < boundary; j++){
-					cout << next_state.second[i][j] << " ";
-				}
-				cout << endl;
-			}
-
-			
-		}
-		Node tmp_node = minmax(next_state, iter_num - 1, playerID, alpha, beta, index + 1);
-		if(show_scores) cout << "for action: (" << action[0] << " " << action[1] << " " << action[2] << " " << action[3] << ") score: " << tmp_node.first << endl;
-		if(tmp_node.first > val){
-			val = tmp_node.first;
-			best_action = action;
-		}
-		if(val >= beta){
-			if(Debug) cout << "Action: (" << best_action[0] << " " << best_action[1] << " " << best_action[2] << " " << best_action[3] << ")" << endl;
-			return make_pair(val, best_action);
-		}
-		alpha = max(alpha, val);
-	}
-	if(Debug) cout << "Action: (" << best_action[0] << " " << best_action[1] << " " << best_action[2] << " " << best_action[3] << ")" << endl;
-
-	return make_pair(val, best_action);
-	
-}
 Node minmax(State state, int iter_num, int playerID, double alpha, double beta, int index){
 	if (index == 5) index = 1;
-	if(iter_num == 0) {
+	if(iter_num <= 0) {
 		if(Debug) cout << "Enter evaluate" << endl;
-		return make_pair(evaluate(playerID, state, index != playerID), Action());
+		double score = evaluate(playerID, state, index != playerID, step_num >= 8);
+		if(score <= INT_MIN) score = -999999;
+		else if(score >= INT_MAX) score = 999999;
+		return make_pair(score, Action());
 	}
-	if(index == playerID) return max_part(state, iter_num, playerID, alpha, beta, index);
-	else return min_part(state, iter_num, playerID, alpha, beta, index);
+	if(index == playerID) { // Max part
+		if(Debug) cout << "Enter Max Part, parameter: " << iter_num << " " << playerID << " " << alpha << " " << beta << " " << index << endl;
+		double val = INT_MIN;
+		Action best_action = Action();
+		vector<vector<int>> mapStat = state.first;
+		vector<vector<int>> sheepStat = state.second;
+		vector<Action> actions = get_action(mapStat, sheepStat, index);
+		if(Debug){
+			for(auto &action: actions){
+				cout << action[0] << " " << action[1] << " " << action[2] << " " << action[3] << endl;
+			}
+		}
+		for(auto &action: actions){
+			State next_state = get_next_state(state, action);
+			if (show_map){
+				cout << "Next State: " << endl;
+				print_state(next_state);				
+			}
+			Node tmp_node = minmax(next_state, iter_num - 1, playerID, alpha, beta, index + 1);
+			if(show_scores) cout << "for action: (" << action[0] << " " << action[1] << " " << action[2] << " " << action[3] << ") score: " << tmp_node.first << endl;
+			if(tmp_node.first == INT_MIN) continue;
+			if(tmp_node.first > val){
+				val = tmp_node.first;
+				best_action = action;
+			}
+			
+			if(val >= beta){
+				if(Debug) cout << "Action: (" << best_action[0] << " " << best_action[1] << " " << best_action[2] << " " << best_action[3] << ")" << endl;
+				return make_pair(val, best_action);
+			}
+			alpha = max(alpha, val);
+		}
+		if(Debug) cout << "Action: (" << best_action[0] << " " << best_action[1] << " " << best_action[2] << " " << best_action[3] << ")" << endl;
+
+		return make_pair(val, best_action);
+	}
+	else { // Min part
+		if(Debug) cout << "Enter Min Part, parameter: " << iter_num << " " << playerID << " " << alpha << " " << beta << " " << index << endl;
+		double val = INT_MAX;
+		Action best_action = Action();
+		vector<vector<int>> mapStat = state.first;
+		vector<vector<int>> sheepStat = state.second;
+		vector<Action> actions = get_action(mapStat, sheepStat, index);
+		if(Debug){
+			for(auto &action: actions){
+				cout << action[0] << " " << action[1] << " " << action[2] << " " << action[3] << endl;
+			}
+		}
+		for(auto &action: actions){
+			State next_state = get_next_state(state, action);
+			Node tmp_node = minmax(next_state, iter_num - 1, playerID, alpha, beta, index + 1);
+			if(tmp_node.first == INT_MAX) continue;
+			if(tmp_node.first < val){
+				val = tmp_node.first;
+				best_action = action;
+			}
+			if(val <= alpha){
+				return make_pair(val, best_action);
+			}
+			beta = min(beta, val);
+		}
+		return make_pair(val, best_action);
+	}
 }
 
 /*
@@ -294,11 +280,11 @@ Node minmax(State state, int iter_num, int playerID, double alpha, double beta, 
     
 */
 
-std::vector<int> InitPos(int mapStat[12][12])
+vector<int> InitPos(int mapStat[12][12])
 {
 	double score = INT_MIN;
 	vector<vector<int>> pos;
-	std::vector<int> init_pos;
+	vector<int> init_pos;
 	init_pos.resize(2);
 	vector<vector<int>> mapStat_cpy;
 	mapStat_cpy.resize(boundary);
@@ -311,7 +297,7 @@ std::vector<int> InitPos(int mapStat[12][12])
 	for(int i = 0; i < boundary; i++){
 		for(int j = 0; j < boundary; j++){
 			if(mapStat[i][j] != 0) continue;
-			if(i > 0 && i < boundary && j > 0 && j < boundary){
+			if(isnt_bound(i,j)){
 				if(mapStat[i-1][j] != -1 && mapStat[i+1][j] != -1 && mapStat[i][j-1] != -1 && mapStat[i][j+1] != -1) continue; // 周圍沒有障礙
 				else{
 					double tmp = eva_with_future_possibility(mapStat_cpy, i, j, 16);
@@ -352,7 +338,7 @@ std::vector<int> InitPos(int mapStat[12][12])
 			4 X 6
 			7 8 9
 */
-std::vector<int> GetStep(int playerID,int mapStat[12][12], int sheepStat[12][12])
+vector<int> GetStep(int playerID,int mapStat[12][12], int sheepStat[12][12])
 {
 	// translate the mapStat and sheepStat to the boundary 12*12 matrix with vector type
 	vector<vector<int>> mapStat_vec;
@@ -368,11 +354,12 @@ std::vector<int> GetStep(int playerID,int mapStat[12][12], int sheepStat[12][12]
 		}
 	}
 	if(Debug) cout << "Enter MinMax" << endl;
-	Node best_node = minmax(make_pair(mapStat_vec, sheepStat_vec), 3, playerID, -INT_MAX, INT_MAX, playerID);
+	Node best_node = minmax(make_pair(mapStat_vec, sheepStat_vec), 5, playerID, INT_MIN, INT_MAX, playerID);
 	vector<int> step = best_node.second;
 	
 
 	/*
+
 		Write your code here
 	*/
     
@@ -390,12 +377,13 @@ int main()
 
 	// player initial
 
-	// Debug = true;
-	show_scores = true;
-	show_step = true;
-	int step_num = 1;
+	Debug = false;
+	show_scores = false;
+	show_step = false;
+	show_map = false;	
+	show_dir = false;
 	GetMap(id_package,playerID,mapStat);
-	std::vector<int> init_pos = InitPos(mapStat);
+	vector<int> init_pos = InitPos(mapStat);
 	if(Debug) cout << "set init_pos: (" << init_pos[0] << " " << init_pos[1] << ")" << endl;
 	SendInitPos(id_package,init_pos);
 
@@ -403,8 +391,9 @@ int main()
 	{
 		if (GetBoard(id_package, mapStat, sheepStat))
 			break;
-		if(show_step) cout << "step: " << step_num++ << "\n";
-		std::vector<int> step = GetStep(playerID,mapStat,sheepStat);
+		if(show_step) cout << "step: " << step_num << "\n";
+		vector<int> step = GetStep(playerID,mapStat,sheepStat);
+		step_num++;
 		
 		SendStep(id_package, step);
 	}
