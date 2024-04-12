@@ -354,7 +354,7 @@ vector<int> GetStep(int playerID,int mapStat[12][12], int sheepStat[12][12])
 		}
 	}
 	if(Debug) cout << "Enter MinMax" << endl;
-	Node best_node = minmax(make_pair(mapStat_vec, sheepStat_vec), 5, playerID, INT_MIN, INT_MAX, playerID);
+	Node best_node = minmax(make_pair(mapStat_vec, sheepStat_vec), 6, playerID, INT_MIN, INT_MAX, playerID);
 	vector<int> step = best_node.second;
 	
 
