@@ -2,7 +2,8 @@
 //	Copyright © 2019 by Phillip Chang
 //
 #pragma once
-
+#define _WIN32_WINNT 0x501
+#define MSG_WAITALL     0x8  
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
