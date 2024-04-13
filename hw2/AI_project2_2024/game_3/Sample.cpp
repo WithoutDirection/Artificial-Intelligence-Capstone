@@ -390,6 +390,12 @@ int main()
 	{
 		if (GetBoard(id_package, mapStat, sheepStat))
 			break;
+		// hide other player's sheep number start
+		for (int i = 0; i < 12; i++)
+			for (int j = 0; j < 12; j++)
+				if (mapStat[i][j] != playerID)
+					sheepStat[i][j] = 0;
+		// hide other player's sheep number end 
 		if(show_step) cout << "step: " << step_num << "\n";
 		vector<int> step = GetStep(playerID,mapStat,sheepStat);
 		step_num++;
