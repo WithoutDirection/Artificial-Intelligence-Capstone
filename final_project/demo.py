@@ -77,6 +77,7 @@ def main():
                 df = pd.DataFrame({'thres': Thres, 'slope': Slope, 'time': Time})
                 kmeans_model = model.Kmeans_model(df, save_name, window = 15)
                 hierarchical_model,label=model.Hierarchical_Clustering_model(df, save_name, window = 15)
+                pca_model=model.PCA_Kmeans_model(df, save_name, window=15)
                 gmm=model.GaussianMixture_model(df, save_name, window = 15)
                 # print("Average Threshold:", avg_thres)
                 collect_data = True
@@ -85,6 +86,7 @@ def main():
             if collect_data:
                 # get the input data
                 input_data = pd.DataFrame([{'thres': ratio, 'slope': slope}])
+                hierarchical_input_data = pd.DataFrame([{'thres': ratio, 'slope': slope, 'time': time_}])
                 label = kmeans_model.predict(input_data)    # predict the label of the current sample
                 print("Kmeans Label:", label)
                 if label == 1 and q.qsize() == qsize:
@@ -94,7 +96,7 @@ def main():
                     print("stop ", ratio)
                     # ser.write(b'0')
                     
-                hierarchical_model,label=model.Hierarchical_Clustering_model(df, save_name, window = 15)   
+                hierarchical_model,label=model.Hierarchical_Clustering_model(hierarchical_input_data, save_name, window = 15)   
                 print("Hierarchical Label:", label)
                 if label == 1 and q.qsize() == qsize:
                     print("move forward", ratio)
@@ -105,6 +107,16 @@ def main():
                 
                 label=gmm.predict(input_data)
                 print("Gausian Mixture Label:", label)
+                if label == 1 and q.qsize() == qsize:
+                    print("move forward", ratio)
+                    # ser.write(b'1')
+                else:
+                    print("stop ", ratio)
+                    # ser.write(b'0')
+                    
+                pca_input_data=model.PCA_model(input_data, save_name)
+                label=pca_model.predict(pca_input_data)
+                print("PCA Label:", label)
                 if label == 1 and q.qsize() == qsize:
                     print("move forward", ratio)
                     # ser.write(b'1')
